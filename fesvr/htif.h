@@ -13,6 +13,9 @@
 #include <vector>
 #include <assert.h>
 
+//这里继承了chunked_memif_t
+//后面sim又继承了htif
+//read_chunk就是通过sim中的MEM
 class htif_t : public chunked_memif_t
 {
  public:

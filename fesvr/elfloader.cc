@@ -21,20 +21,26 @@
 std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* entry,
                                          reg_t load_offset, unsigned required_xlen = 0)
 {
+  //打开elf文件
+  //用elf是因为是动态链接的
   int fd = open(fn, O_RDONLY);
   struct stat s;
   if (fd == -1)
       throw std::invalid_argument(std::string("Specified ELF can't be opened: ") + strerror(errno));
+      //获取文件元数据大小
   if (fstat(fd, &s) < 0)
     abort();
   size_t size = s.st_size;
-
+ //长度，可读，私有+写时复制，映射文件，0处开始
   char* buf = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (buf == MAP_FAILED)
       throw std::invalid_argument(std::string("Specified ELF can't be mapped: ") + strerror(errno));
   close(fd);
 
   assert(size >= sizeof(Elf64_Ehdr));
+  //所以我们不知道buf是elf64还是32
+  //(hdr).e_ident[4] == 1：
+//e_ident[EI_CLASS]（索引 4）表示 ELF 文件的类
   const Elf64_Ehdr* eh64 = (const Elf64_Ehdr*)buf;
   assert(IS_ELF32(*eh64) || IS_ELF64(*eh64));
   unsigned xlen = IS_ELF32(*eh64) ? 32 : 64;
@@ -53,6 +59,15 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* 
   std::vector<uint8_t> zeros;
   std::map<std::string, uint64_t> symbols;
 
+
+//elf header  program header section header symbol byte swap
+//p_filesz表示段在文件中的大小，mem>file 填0
+//strcmp(shstrtab + bswap(sh[i].sh_name), ".strtab") 左边是char*指针
+//sh_name 名称索引
+//unsigned max_len =                                                       \
+          bswap(sh[bswap(eh->e_shstrndx)].sh_size) - bswap(sh[i].sh_name);
+//就是说命名最多可以一直到eh->e_shstrndx结尾
+//这里主要加载了程序段
 #define LOAD_ELF(ehdr_t, phdr_t, shdr_t, sym_t, bswap)                         \
   do {                                                                         \
     ehdr_t* eh = (ehdr_t*)buf;                                                 \
@@ -127,7 +142,7 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* 
       LOAD_ELF(Elf64_Ehdr, Elf64_Phdr, Elf64_Shdr, Elf64_Sym, from_be);
 #endif
   }
-
+//解mmap
   munmap(buf, size);
 
   return symbols;

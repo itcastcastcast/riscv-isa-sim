@@ -13,6 +13,7 @@ typedef uint64_t reg_t;
 typedef int64_t sreg_t;
 typedef reg_t addr_t;
 
+//抽象类
 class chunked_memif_t
 {
 public:

@@ -22,9 +22,11 @@ static inline uint128_t swap(uint128_t n) { return (uint128_t(swap(uint64_t(n)))
 static inline int128_t swap(int128_t n) { return int128_t(swap(uint128_t(n))); }
 #endif
 
+//true:在大端   false：在小端
 static inline bool is_be() { return htonl(1) == 1; }
 template<typename T> static inline T from_be(T n) { return is_be() ? n : swap(n); }
 template<typename T> static inline T to_be(T n) { return from_be(n); }
+//转换为本机所对应的机型的endian
 template<typename T> static inline T from_le(T n) { return is_be() ? swap(n) : n; }
 template<typename T> static inline T to_le(T n) { return from_le(n); }
 

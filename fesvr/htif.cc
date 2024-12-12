@@ -44,6 +44,7 @@ static void handle_signal(int sig)
   signal(sig, &handle_signal);
 }
 
+//默认构造
 htif_t::htif_t()
   : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
     tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
@@ -54,6 +55,7 @@ htif_t::htif_t()
   signal(SIGABRT, &handle_signal); // we still want to call static destructors
 }
 
+//就是执行了这个构造函数
 htif_t::htif_t(int argc, char** argv) : htif_t()
 {
   //Set line size as 16 by default.
@@ -81,7 +83,7 @@ htif_t::~htif_t()
   for (auto d : dynamic_devices)
     delete d;
 }
-
+//还调用了这个
 void htif_t::start()
 {
   if (!targs.empty() && targs[0] != "none") {
@@ -106,6 +108,7 @@ static void bad_address(const std::string& situation, reg_t addr)
 std::map<std::string, uint64_t> htif_t::load_payload(const std::string& payload, reg_t* entry, reg_t load_offset)
 {
   std::string path;
+  //检查文件的存在性
   if (access(payload.c_str(), F_OK) == 0)
     path = payload;
   else if (payload.find('/') == std::string::npos)
@@ -128,6 +131,7 @@ std::map<std::string, uint64_t> htif_t::load_payload(const std::string& payload,
 
   // temporarily construct a memory interface that skips writing bytes
   // that have already been preloaded through a sideband
+  //传递的是this
   class preload_aware_memif_t : public memif_t {
    public:
     preload_aware_memif_t(htif_t* htif) : memif_t(htif), htif(htif) {}
@@ -140,8 +144,9 @@ std::map<std::string, uint64_t> htif_t::load_payload(const std::string& payload,
 
    private:
     htif_t* htif;
+    //这个this指向调用成员函数的对象 也就是继承了htif的sim
   } preload_aware_memif(this);
-
+  //load_elf就是在这里
   try {
     return load_elf(path.c_str(), &preload_aware_memif, entry, load_offset, expected_xlen);
   } catch (mem_trap_t& t) {
@@ -182,6 +187,7 @@ void htif_t::load_program()
   } nop_memif(this);
 
   reg_t nop_entry;
+  //有一些symbol是elf文件
   for (auto &s : symbol_elfs) {
     std::map<std::string, uint64_t> other_symbols = load_elf(s.c_str(), &nop_memif, &nop_entry,
                                                              expected_xlen);
@@ -345,6 +351,7 @@ void htif_t::parse_arguments(int argc, char ** argv)
       case HTIF_LONG_OPTIONS_OPTIND + 6:
         targs.push_back(optarg);
         break;
+        //这里要加symbol_elfs
       case HTIF_LONG_OPTIONS_OPTIND + 7:
         symbol_elfs.push_back(optarg);
         break;
@@ -421,6 +428,7 @@ void htif_t::parse_arguments(int argc, char ** argv)
 
 done_processing:
   while (optind < argc)
+  //这里加入了elf文件
     targs.push_back(argv[optind++]);
   if (!targs.size()) {
     usage(argv[0]);
